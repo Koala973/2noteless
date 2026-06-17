@@ -1,10 +1,44 @@
 import SwiftUI
 
+#if canImport(UIKit)
+import UIKit
+#endif
+
 struct DoodleActionBar: View {
     var showsRecordButton: Bool = true
+    private var isRecording: Binding<Bool>?
+    private var namespace: Namespace.ID?
     var onShop: () -> Void = {}
     var onRecord: () -> Void = {}
     var onWrite: () -> Void = {}
+
+    init(
+        showsRecordButton: Bool = true,
+        onShop: @escaping () -> Void = {},
+        onRecord: @escaping () -> Void = {},
+        onWrite: @escaping () -> Void = {}
+    ) {
+        self.showsRecordButton = showsRecordButton
+        self.isRecording = nil
+        self.namespace = nil
+        self.onShop = onShop
+        self.onRecord = onRecord
+        self.onWrite = onWrite
+    }
+
+    init(
+        isRecording: Binding<Bool>,
+        namespace: Namespace.ID,
+        onShop: @escaping () -> Void = {},
+        onWrite: @escaping () -> Void = {}
+    ) {
+        self.showsRecordButton = true
+        self.isRecording = isRecording
+        self.namespace = namespace
+        self.onShop = onShop
+        self.onRecord = {}
+        self.onWrite = onWrite
+    }
 
     var body: some View {
         HStack(alignment: .center) {
@@ -26,29 +60,7 @@ struct DoodleActionBar: View {
 
             Spacer(minLength: 26)
 
-            if showsRecordButton {
-                Button(action: onRecord) {
-                    Image(systemName: "mic.fill")
-                        .symbolRenderingMode(.monochrome)
-                        .font(.system(size: 25, weight: .black))
-                        .foregroundColor(.white)
-                        .frame(width: 56, height: 56)
-                }
-                .buttonStyle(
-                    DoodlePressButtonStyle(
-                        fillColor: DoodlePalette.bubblegumPink,
-                        foregroundColor: .white,
-                        borderWidth: 4,
-                        shadowOffset: 4
-                    )
-                )
-                .tint(.white)
-                .accessibilityLabel("Start recording")
-            } else {
-                Color.clear
-                    .frame(width: 56, height: 56)
-                    .accessibilityHidden(true)
-            }
+            recordButton
 
             Spacer(minLength: 26)
 
@@ -83,6 +95,84 @@ struct DoodleActionBar: View {
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 10)
+    }
+
+    @ViewBuilder
+    private var recordButton: some View {
+        if showsRecordButton {
+            if let isRecording, let namespace {
+                DoodleActionRecordButton(isRecording: isRecording, namespace: namespace)
+            } else {
+                Button(action: onRecord) {
+                    Image(systemName: "mic.fill")
+                        .symbolRenderingMode(.monochrome)
+                        .font(.system(size: 25, weight: .black))
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                }
+                .buttonStyle(
+                    DoodlePressButtonStyle(
+                        fillColor: DoodlePalette.bubblegumPink,
+                        foregroundColor: .white,
+                        borderWidth: 4,
+                        shadowOffset: 4
+                    )
+                )
+                .tint(.white)
+                .accessibilityLabel("Start recording")
+            }
+        } else {
+            Color.clear
+                .frame(width: 56, height: 56)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+private struct DoodleActionRecordButton: View {
+    @Binding var isRecording: Bool
+    let namespace: Namespace.ID
+
+    var body: some View {
+        ZStack {
+            if isRecording {
+                Color.clear
+                    .frame(width: 56, height: 56)
+                    .accessibilityHidden(true)
+            } else {
+                Button {
+                    #if canImport(UIKit)
+                    UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                    #endif
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0)) {
+                        isRecording = true
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(DoodlePalette.bubblegumPink)
+                            .overlay {
+                                Circle()
+                                    .stroke(DoodlePalette.markerBlack, lineWidth: 4)
+                            }
+                            .shadow(color: DoodlePalette.markerBlack, radius: 0, x: 4, y: 4)
+                            .matchedGeometryEffect(id: "recordingHUD", in: namespace)
+
+                        Image(systemName: "mic.fill")
+                            .symbolRenderingMode(.monochrome)
+                            .font(.system(size: 25, weight: .black))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 56, height: 56)
+                    .contentShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .tint(.white)
+                .accessibilityLabel("Start recording")
+                .accessibilityIdentifier("recordingHUD.startButton")
+            }
+        }
+        .frame(width: 56, height: 56)
     }
 }
 

@@ -4,96 +4,50 @@ import SwiftUI
 import UIKit
 #endif
 
-struct RecordingHUDView: View {
-    private let externalRecording: Binding<Bool>?
-    private let collapsedBottomPadding: CGFloat
-    private let expandedBottomPadding: CGFloat
-    private let waveformSamples: [CGFloat]
+struct ExpandedRecordingHUD: View {
+    @Binding var isRecording: Bool
+    let namespace: Namespace.ID
+    let waveformSamples: [CGFloat]
 
-    @Namespace private var animation
-    @State private var localRecording = false
     @State private var auraPulse = false
 
     init(
-        isRecording: Binding<Bool>? = nil,
-        collapsedBottomPadding: CGFloat = 18,
-        expandedBottomPadding: CGFloat = 16,
-        waveformSamples: [CGFloat] = RecordingHUDView.defaultSamples
+        isRecording: Binding<Bool>,
+        namespace: Namespace.ID,
+        waveformSamples: [CGFloat] = ExpandedRecordingHUD.defaultSamples
     ) {
-        self.externalRecording = isRecording
-        self.collapsedBottomPadding = collapsedBottomPadding
-        self.expandedBottomPadding = expandedBottomPadding
+        self._isRecording = isRecording
+        self.namespace = namespace
         self.waveformSamples = waveformSamples
     }
 
     var body: some View {
         GeometryReader { proxy in
-            let recording = recordingBinding
-
             ZStack(alignment: .bottom) {
-                if recording.wrappedValue {
-                    Color.black.opacity(0.22)
-                        .ignoresSafeArea()
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            setRecording(false)
-                        }
-                        .transition(.opacity)
-                        .zIndex(1)
+                Color.black.opacity(0.22)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: close)
 
-                    expandedPanel(height: panelHeight(for: proxy.size.height))
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+
+                    panel(height: panelHeight(for: proxy.size.height))
                         .padding(.horizontal, 20)
-                        .padding(.bottom, max(expandedBottomPadding, proxy.safeAreaInsets.bottom + expandedBottomPadding))
-                        .transition(.opacity)
-                        .zIndex(2)
-                } else {
-                    collapsedMicButton
-                        .padding(.bottom, max(collapsedBottomPadding, proxy.safeAreaInsets.bottom + collapsedBottomPadding))
-                        .transition(.opacity)
-                        .zIndex(3)
+                        .padding(.bottom, max(18, proxy.safeAreaInsets.bottom + 8))
                 }
             }
-            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)
-            .animation(.spring(response: 0.4, dampingFraction: 0.6, blendDuration: 0), value: recording.wrappedValue)
+            .frame(width: proxy.size.width, height: proxy.size.height)
+        }
+        .ignoresSafeArea()
+        .transition(.opacity)
+        .onAppear(perform: startAura)
+        .onDisappear {
+            auraPulse = false
         }
     }
 
-    private var recordingBinding: Binding<Bool> {
-        externalRecording ?? Binding(
-            get: { localRecording },
-            set: { localRecording = $0 }
-        )
-    }
-
-    private var collapsedMicButton: some View {
-        Button {
-            setRecording(true)
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(DoodlePalette.bubblegumPink)
-                    .overlay {
-                        Circle()
-                            .stroke(DoodlePalette.markerBlack, lineWidth: 4)
-                    }
-                    .shadow(color: DoodlePalette.markerBlack, radius: 0, x: 4, y: 4)
-                    .matchedGeometryEffect(id: "hudBackground", in: animation)
-
-                Image(systemName: "mic.fill")
-                    .symbolRenderingMode(.monochrome)
-                    .font(.system(size: 25, weight: .black))
-                    .foregroundStyle(.white)
-            }
-            .frame(width: 56, height: 56)
-            .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .tint(.white)
-        .accessibilityLabel("Start recording")
-        .accessibilityIdentifier("recordingHUD.startButton")
-    }
-
-    private func expandedPanel(height: CGFloat) -> some View {
+    private func panel(height: CGFloat) -> some View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color.white)
@@ -108,9 +62,9 @@ struct RecordingHUDView: View {
                     y: -5
                 )
                 .shadow(color: DoodlePalette.markerBlack, radius: 0, x: 5, y: 5)
-                .matchedGeometryEffect(id: "hudBackground", in: animation)
+                .matchedGeometryEffect(id: "recordingHUD", in: namespace)
 
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(DoodlePalette.bubblegumPink.opacity(auraPulse ? 0.34 : 0.14))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 14)
@@ -136,9 +90,7 @@ struct RecordingHUDView: View {
                 HStack {
                     Spacer(minLength: 0)
 
-                    Button {
-                        setRecording(false)
-                    } label: {
+                    Button(action: close) {
                         Image(systemName: "xmark")
                             .font(.system(size: 24, weight: .black, design: .rounded))
                             .foregroundStyle(.white)
@@ -166,22 +118,17 @@ struct RecordingHUDView: View {
         }
         .frame(maxWidth: 430)
         .frame(height: height)
-        .onAppear(perform: startAura)
-        .onDisappear {
-            auraPulse = false
-        }
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Recording brain dump panel")
     }
 
-    private func panelHeight(for containerHeight: CGFloat) -> CGFloat {
-        min(390, max(318, containerHeight * 0.40))
-    }
-
-    private func setRecording(_ recording: Bool) {
-        impact(recording ? .heavy : .medium)
-        withAnimation(.spring(response: 0.4, dampingFraction: recording ? 0.6 : 0.68, blendDuration: 0)) {
-            recordingBinding.wrappedValue = recording
+    private func close() {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.68, blendDuration: 0)) {
+            isRecording = false
         }
     }
 
@@ -192,10 +139,8 @@ struct RecordingHUDView: View {
         }
     }
 
-    private func impact(_ style: ImpactStyle) {
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: style.feedbackStyle).impactOccurred()
-        #endif
+    private func panelHeight(for containerHeight: CGFloat) -> CGFloat {
+        min(390, max(318, containerHeight * 0.40))
     }
 
     private static let defaultSamples: [CGFloat] = [
@@ -204,37 +149,41 @@ struct RecordingHUDView: View {
     ]
 }
 
-private enum ImpactStyle {
-    case heavy
-    case medium
+struct RecordingHUDView: View {
+    @State private var isRecording = false
+    @Namespace private var namespace
 
-    #if canImport(UIKit)
-    var feedbackStyle: UIImpactFeedbackGenerator.FeedbackStyle {
-        switch self {
-        case .heavy:
-            return .heavy
-        case .medium:
-            return .medium
+    var body: some View {
+        ZStack {
+            DoodlePalette.paperBg
+                .ignoresSafeArea()
+                .messyScribbleBackground(color: DoodlePalette.bubblegumPink, opacity: 0.06)
+
+            VStack {
+                Spacer(minLength: 0)
+
+                DoodleActionBar(isRecording: $isRecording, namespace: namespace)
+            }
+
+            if isRecording {
+                ExpandedRecordingHUD(isRecording: $isRecording, namespace: namespace)
+                    .zIndex(10)
+            }
         }
     }
-    #endif
 }
 
 #Preview("Recording HUD") {
-    ZStack {
-        DoodlePalette.paperBg
-            .ignoresSafeArea()
-            .messyScribbleBackground(color: DoodlePalette.bubblegumPink, opacity: 0.06)
-
-        RecordingHUDView()
-    }
+    RecordingHUDView()
 }
 
-#Preview("Recording HUD Bound") {
+#Preview("Recording HUD Expanded") {
     @Previewable @State var isRecording = true
+    @Previewable @Namespace var namespace
 
     ZStack {
         DoodlePalette.paperBg.ignoresSafeArea()
-        RecordingHUDView(isRecording: $isRecording)
+        DoodleActionBar(isRecording: $isRecording, namespace: namespace)
+        ExpandedRecordingHUD(isRecording: $isRecording, namespace: namespace)
     }
 }

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeFeedView: View {
     private let cards = QuestCard.samples
+    @State private var isRecording = false
+    @Namespace private var hudNamespace
 
     var body: some View {
         ZStack {
@@ -23,18 +25,20 @@ struct HomeFeedView: View {
                 }
                 .padding(.bottom, 12)
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            DoodleActionBar(showsRecordButton: false)
-                .padding(.top, 8)
-                .frame(maxWidth: .infinity)
-                .background {
-                    DoodlePalette.paperBg
-                        .ignoresSafeArea(edges: .bottom)
-                }
-        }
-        .overlay {
-            RecordingHUDView()
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                DoodleActionBar(isRecording: $isRecording, namespace: hudNamespace)
+                    .padding(.top, 8)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        DoodlePalette.paperBg
+                            .ignoresSafeArea(edges: .bottom)
+                    }
+            }
+
+            if isRecording {
+                ExpandedRecordingHUD(isRecording: $isRecording, namespace: hudNamespace)
+                    .zIndex(10)
+            }
         }
     }
 }
