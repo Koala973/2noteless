@@ -37,16 +37,19 @@ struct ExpandedRecordingHUD: View {
                 Image("chaotic_waveform")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: layout.waveformSize.width, height: layout.waveformSize.height)
+                    .frame(width: layout.waveformSize.width * 1.12, height: layout.waveformSize.height)
                     .scaleEffect(x: 1, y: waveformScaleY, anchor: .center)
                     .offset(x: waveformNudgeX)
                     .position(layout.waveformCenter)
+                    .mask(RecordingWaveformEdgeFade())
                     .animation(.spring(response: 0.15, dampingFraction: 0.4, blendDuration: 0), value: waveformScaleY)
                     .animation(.spring(response: 0.15, dampingFraction: 0.4, blendDuration: 0), value: waveformNudgeX)
                     .allowsHitTesting(false)
                     .accessibilityHidden(true)
 
-                hitZones(layout: layout)
+                micButton(layout: layout)
+
+                topControls(topInset: topControlTopInset(for: proxy))
             }
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
@@ -63,32 +66,74 @@ struct ExpandedRecordingHUD: View {
         }
     }
 
-    private func hitZones(layout: RecordingHUDFigmaLayout) -> some View {
-        ZStack {
-            RecordingHUDHitZone(
-                center: layout.topLeftCenter,
-                size: layout.topButtonSize,
-                accessibilityLabel: "Back",
-                accessibilityIdentifier: "recordingHUD.backButton",
-                action: close
-            )
-
-            RecordingHUDHitZone(
-                center: layout.topRightCenter,
-                size: layout.topButtonSize,
-                accessibilityLabel: "More actions",
-                accessibilityIdentifier: "recordingHUD.moreButton",
-                action: moreFeedback
-            )
-
-            RecordingHUDHitZone(
-                center: layout.micCenter,
-                size: layout.micHitSize,
-                accessibilityLabel: "Stop recording",
-                accessibilityIdentifier: "recordingHUD.stopButton",
-                action: close
-            )
+    private func micButton(layout: RecordingHUDFigmaLayout) -> some View {
+        Button(action: close) {
+            Image("brutal_mic_button")
+                .resizable()
+                .aspectRatio(1, contentMode: .fill)
+                .frame(width: layout.micButtonDiameter, height: layout.micButtonDiameter)
+                .matchedGeometryEffect(id: "micButton", in: namespace)
+                .contentShape(Circle())
         }
+        .buttonStyle(RecordingHUDMicArtworkButtonStyle())
+        .position(layout.micCenter)
+        .accessibilityLabel("Stop recording")
+        .accessibilityIdentifier("recordingHUD.stopButton")
+    }
+
+    private func topControls(topInset: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button(action: close) {
+                    RecordingMenuGlyph()
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(
+                    BrutalButtonStyle(
+                        fillColor: .white,
+                        foregroundColor: DoodlePalette.markerBlack,
+                        borderWidth: 2,
+                        shadowOffset: CGSize(width: 3, height: 3),
+                        pressedOffset: CGSize(width: 3, height: 3),
+                        pressedScale: 0.94,
+                        shape: .circle,
+                        haptic: .light
+                    )
+                )
+                .accessibilityLabel("Back")
+                .accessibilityIdentifier("recordingHUD.backButton")
+
+                Spacer(minLength: 0)
+
+                Button(action: moreFeedback) {
+                    RecordingMoreGlyph()
+                        .frame(width: 44, height: 44)
+                }
+                .buttonStyle(
+                    BrutalButtonStyle(
+                        fillColor: .white,
+                        foregroundColor: DoodlePalette.markerBlack,
+                        borderWidth: 2,
+                        shadowOffset: CGSize(width: 3, height: 3),
+                        pressedOffset: CGSize(width: 3, height: 3),
+                        pressedScale: 0.94,
+                        shape: .circle,
+                        haptic: .medium
+                    )
+                )
+                .accessibilityLabel("More actions")
+                .accessibilityIdentifier("recordingHUD.moreButton")
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, topInset)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    private func topControlTopInset(for proxy: GeometryProxy) -> CGFloat {
+        max(proxy.safeAreaInsets.top + 8, proxy.size.height > 860 ? 68 : 50)
     }
 
     private func close() {
@@ -114,44 +159,15 @@ struct ExpandedRecordingHUD: View {
     }
 }
 
-private struct RecordingHUDHitZone: View {
-    let center: CGPoint
-    let size: CGSize
-    let accessibilityLabel: String
-    let accessibilityIdentifier: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Color.clear
-                .frame(width: size.width, height: size.height)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(RecordingHUDTransparentButtonStyle())
-        .position(center)
-        .accessibilityLabel(accessibilityLabel)
-        .accessibilityIdentifier(accessibilityIdentifier)
-    }
-}
-
-private struct RecordingHUDTransparentButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
-    }
-}
-
 private struct RecordingHUDFigmaLayout {
     private static let canvasSize = CGSize(width: 786, height: 1418)
     private static let waveformRect = CGRect(x: -13, y: 398, width: 815, height: 528)
     private static let micRect = CGRect(x: 228, y: 932, width: 330, height: 330)
-    private static let leftButtonRect = CGRect(x: 22, y: 84, width: 98, height: 98)
-    private static let rightButtonRect = CGRect(x: 666, y: 84, width: 98, height: 98)
 
     private let scaleX: CGFloat
     private let scaleY: CGFloat
     private let originY: CGFloat
+    private let viewWidth: CGFloat
     let contentHeight: CGFloat
 
     static func topOffset(for proxy: GeometryProxy) -> CGFloat {
@@ -160,6 +176,7 @@ private struct RecordingHUDFigmaLayout {
 
     init(proxy: GeometryProxy, topOffset: CGFloat) {
         let viewSize = proxy.size
+        viewWidth = viewSize.width
         scaleX = viewSize.width / Self.canvasSize.width
         contentHeight = max(1, viewSize.height - topOffset)
         scaleY = contentHeight / Self.canvasSize.height
@@ -178,22 +195,9 @@ private struct RecordingHUDFigmaLayout {
         center(of: Self.micRect)
     }
 
-    var micHitSize: CGSize {
+    var micButtonDiameter: CGFloat {
         let size = scaledSize(of: Self.micRect)
-        return CGSize(width: max(size.width, 118), height: max(size.height, 118))
-    }
-
-    var topLeftCenter: CGPoint {
-        center(of: Self.leftButtonRect)
-    }
-
-    var topRightCenter: CGPoint {
-        center(of: Self.rightButtonRect)
-    }
-
-    var topButtonSize: CGSize {
-        let size = scaledSize(of: Self.leftButtonRect)
-        return CGSize(width: max(size.width, 54), height: max(size.height, 54))
+        return min(max(size.width, size.height), viewWidth * 0.5)
     }
 
     private func center(of rect: CGRect) -> CGPoint {
@@ -205,6 +209,56 @@ private struct RecordingHUDFigmaLayout {
 
     private func scaledSize(of rect: CGRect) -> CGSize {
         CGSize(width: rect.width * scaleX, height: rect.height * scaleY)
+    }
+}
+
+private struct RecordingWaveformEdgeFade: View {
+    var body: some View {
+        LinearGradient(
+            gradient: Gradient(stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: 0.12),
+                .init(color: .black, location: 0.88),
+                .init(color: .clear, location: 1)
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+    }
+}
+
+private struct RecordingMenuGlyph: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Capsule()
+                .frame(width: 18, height: 3)
+                .offset(x: 4)
+            Capsule()
+                .frame(width: 22, height: 3)
+            Capsule()
+                .frame(width: 13, height: 3)
+                .offset(x: 2)
+        }
+        .foregroundStyle(DoodlePalette.markerBlack)
+    }
+}
+
+private struct RecordingMoreGlyph: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle().frame(width: 6, height: 6)
+            Circle().frame(width: 6, height: 6)
+            Circle().frame(width: 6, height: 6)
+        }
+        .foregroundStyle(DoodlePalette.markerBlack)
+    }
+}
+
+private struct RecordingHUDMicArtworkButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .animation(.spring(response: 0.2, dampingFraction: 0.58), value: configuration.isPressed)
     }
 }
 
