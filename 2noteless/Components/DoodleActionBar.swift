@@ -156,7 +156,7 @@ private struct DoodleActionRecordButton: View {
                                     .stroke(DoodlePalette.markerBlack, lineWidth: 4)
                             }
                             .shadow(color: DoodlePalette.markerBlack, radius: 0, x: 4, y: 4)
-                            .matchedGeometryEffect(id: "recordingHUD", in: namespace)
+                            .matchedGeometryEffect(id: "micButton", in: namespace)
 
                         Image(systemName: "mic.fill")
                             .symbolRenderingMode(.monochrome)
