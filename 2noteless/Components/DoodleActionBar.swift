@@ -49,10 +49,13 @@ struct DoodleActionBar: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(
-                DoodlePressButtonStyle(
+                BrutalButtonStyle(
                     fillColor: .white,
                     foregroundColor: DoodlePalette.markerBlack,
-                    shadowOffset: 2
+                    borderWidth: 3,
+                    shadowOffset: CGSize(width: 4, height: 4),
+                    shape: .circle,
+                    haptic: .light
                 )
             )
             .tint(DoodlePalette.markerBlack)
@@ -71,10 +74,13 @@ struct DoodleActionBar: View {
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(
-                DoodlePressButtonStyle(
+                BrutalButtonStyle(
                     fillColor: .white,
                     foregroundColor: DoodlePalette.markerBlack,
-                    shadowOffset: 2
+                    borderWidth: 3,
+                    shadowOffset: CGSize(width: 4, height: 4),
+                    shape: .circle,
+                    haptic: .light
                 )
             )
             .tint(DoodlePalette.markerBlack)
@@ -111,11 +117,13 @@ struct DoodleActionBar: View {
                         .frame(width: 56, height: 56)
                 }
                 .buttonStyle(
-                    DoodlePressButtonStyle(
-                        fillColor: DoodlePalette.bubblegumPink,
+                    BrutalButtonStyle(
+                        fillColor: DoodlePalette.brutalPink,
                         foregroundColor: .white,
                         borderWidth: 4,
-                        shadowOffset: 4
+                        shadowOffset: CGSize(width: 4, height: 4),
+                        shape: .circle,
+                        haptic: .heavy
                     )
                 )
                 .tint(.white)
@@ -150,12 +158,11 @@ private struct DoodleActionRecordButton: View {
                 } label: {
                     ZStack {
                         Circle()
-                            .fill(DoodlePalette.bubblegumPink)
+                            .fill(DoodlePalette.brutalPink)
                             .overlay {
                                 Circle()
                                     .stroke(DoodlePalette.markerBlack, lineWidth: 4)
                             }
-                            .shadow(color: DoodlePalette.markerBlack, radius: 0, x: 4, y: 4)
                             .matchedGeometryEffect(id: "micButton", in: namespace)
 
                         Image(systemName: "mic.fill")
@@ -166,7 +173,13 @@ private struct DoodleActionRecordButton: View {
                     .frame(width: 56, height: 56)
                     .contentShape(Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(
+                    BrutalMicButtonStyle(
+                        shadowOffset: CGSize(width: 4, height: 4),
+                        pressedOffset: CGSize(width: 4, height: 4),
+                        haptic: .heavy
+                    )
+                )
                 .tint(.white)
                 .accessibilityLabel("Start recording")
                 .accessibilityIdentifier("recordingHUD.startButton")

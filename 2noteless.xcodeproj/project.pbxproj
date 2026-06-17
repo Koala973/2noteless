@@ -16,7 +16,6 @@
 		AA0000000000000000000107 /* DoodleActionBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000007 /* DoodleActionBar.swift */; };
 		AA0000000000000000000108 /* HomeFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000008 /* HomeFeedView.swift */; };
 		AA0000000000000000000109 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0000000000000000000009 /* Assets.xcassets */; };
-		AA000000000000000000010A /* DoodleWaveformView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000000A /* DoodleWaveformView.swift */; };
 		AA000000000000000000010B /* RecordingHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000000000000000000000B /* RecordingHUDView.swift */; };
 /* End PBXBuildFile section */
 
@@ -30,7 +29,6 @@
 		AA0000000000000000000007 /* DoodleActionBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleActionBar.swift; sourceTree = "<group>"; };
 		AA0000000000000000000008 /* HomeFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFeedView.swift; sourceTree = "<group>"; };
 		AA0000000000000000000009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA000000000000000000000A /* DoodleWaveformView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleWaveformView.swift; sourceTree = "<group>"; };
 		AA000000000000000000000B /* RecordingHUDView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingHUDView.swift; sourceTree = "<group>"; };
 		AA00000000000000000000F0 /* 2noteless.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = 2noteless.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -106,7 +104,6 @@
 		AA0000000000000000000307 /* Recording */ = {
 			isa = PBXGroup;
 			children = (
-				AA000000000000000000000A /* DoodleWaveformView.swift */,
 				AA000000000000000000000B /* RecordingHUDView.swift */,
 			);
 			path = Recording;
@@ -205,7 +202,6 @@
 				AA0000000000000000000106 /* QuestCardView.swift in Sources */,
 				AA0000000000000000000107 /* DoodleActionBar.swift in Sources */,
 				AA0000000000000000000108 /* HomeFeedView.swift in Sources */,
-				AA000000000000000000010A /* DoodleWaveformView.swift in Sources */,
 				AA000000000000000000010B /* RecordingHUDView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

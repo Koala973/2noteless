@@ -4,6 +4,7 @@ enum DoodlePalette {
     static let paperBg = Color("PaperBg")
     static let markerBlack = Color("MarkerBlack")
     static let bubblegumPink = Color("BubblegumPink")
+    static let brutalPink = Color(.displayP3, red: 1.0, green: 0.20, blue: 0.60, opacity: 1.0)
     static let highVisYellow = Color("HighVisYellow")
 }
 

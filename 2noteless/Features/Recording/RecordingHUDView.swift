@@ -8,140 +8,203 @@ struct ExpandedRecordingHUD: View {
     @Binding var isRecording: Bool
     let namespace: Namespace.ID
 
-    @State private var isAnimating = false
     @State private var waveformScaleY: CGFloat = 1
-    @State private var waveformOffsetY: CGFloat = 0
-    @State private var waveformRotation: Double = 0
+    @State private var waveformNudgeX: CGFloat = 0
+    @State private var meterIndex = 0
 
-    private let waveformTimer = Timer.publish(every: 0.11, on: .main, in: .common).autoconnect()
+    private let waveformTimer = Timer.publish(every: 0.14, on: .main, in: .common).autoconnect()
+    private let simulatedMeter: [(scaleY: CGFloat, nudgeX: CGFloat)] = [
+        (0.92, -1.5), (1.18, 1.0), (0.84, -0.5), (1.34, 1.6), (1.02, -1.0),
+        (1.26, 0.8), (0.88, -1.8), (1.40, 1.4), (1.08, 0.0), (0.96, -0.8)
+    ]
 
     var body: some View {
         GeometryReader { proxy in
+            let topOffset = RecordingHUDFigmaLayout.topOffset(for: proxy)
+            let layout = RecordingHUDFigmaLayout(proxy: proxy, topOffset: topOffset)
+
             ZStack {
                 DoodlePalette.paperBg
                     .ignoresSafeArea()
-                    .messyScribbleBackground(color: DoodlePalette.bubblegumPink, opacity: 0.05)
 
-                RecordingPaperTexture()
+                Image("recording_hud_p4_base")
+                    .resizable()
+                    .frame(width: proxy.size.width, height: layout.contentHeight)
+                    .position(x: proxy.size.width / 2, y: topOffset + layout.contentHeight / 2)
                     .ignoresSafeArea()
+                    .allowsHitTesting(false)
 
-                recordingAssets(in: proxy)
+                Image("chaotic_waveform")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: layout.waveformSize.width, height: layout.waveformSize.height)
+                    .scaleEffect(x: 1, y: waveformScaleY, anchor: .center)
+                    .offset(x: waveformNudgeX)
+                    .position(layout.waveformCenter)
+                    .animation(.spring(response: 0.15, dampingFraction: 0.4, blendDuration: 0), value: waveformScaleY)
+                    .animation(.spring(response: 0.15, dampingFraction: 0.4, blendDuration: 0), value: waveformNudgeX)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
 
-                VStack(alignment: .leading, spacing: 0) {
-                    RecordingHeroTitle()
-                        .padding(.top, topContentInset(for: proxy))
-                        .padding(.leading, 24)
-                        .padding(.trailing, 18)
-
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-                VStack(spacing: 8) {
-                    Spacer(minLength: 0)
-
-                    giantMicButton
-
-                    VStack(spacing: 2) {
-                        Text("Tap to stop & capture")
-                            .font(.system(size: 16, weight: .black, design: .rounded))
-                            .foregroundStyle(DoodlePalette.markerBlack)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.76)
-
-                        Capsule()
-                            .fill(DoodlePalette.bubblegumPink)
-                            .frame(width: 154, height: 3)
-                            .rotationEffect(.degrees(-1.4))
-                    }
-                    .padding(.bottom, max(22, proxy.safeAreaInsets.bottom + 10))
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                hitZones(layout: layout)
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .ignoresSafeArea()
+        .statusBarHidden(true)
         .transition(.opacity)
-        .onAppear(perform: startAnimations)
-        .onDisappear(perform: stopAnimations)
+        .onAppear(perform: resetWaveform)
         .onReceive(waveformTimer) { _ in
-            guard isAnimating else { return }
-            withAnimation(.spring(response: 0.1, dampingFraction: 0.3, blendDuration: 0)) {
-                waveformScaleY = CGFloat.random(in: 0.78...1.5)
-                waveformOffsetY = CGFloat.random(in: -14...14)
-                waveformRotation = Double.random(in: -1.8...1.8)
-            }
+            guard isRecording else { return }
+            meterIndex = (meterIndex + 1) % simulatedMeter.count
+            let sample = simulatedMeter[meterIndex]
+            waveformScaleY = sample.scaleY
+            waveformNudgeX = sample.nudgeX
         }
     }
 
-    private func recordingAssets(in proxy: GeometryProxy) -> some View {
+    private func hitZones(layout: RecordingHUDFigmaLayout) -> some View {
         ZStack {
-            Image("giant_pink_aura")
-                .resizable()
-                .scaledToFit()
-                .frame(width: proxy.size.width * 1.72)
-                .scaleEffect(isAnimating ? 1.1 : 0.9)
-                .rotationEffect(.degrees(isAnimating ? 5 : -5))
-                .opacity(0.96)
-                .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: isAnimating)
-                .position(x: proxy.size.width * 0.5, y: proxy.size.height * 0.52)
+            RecordingHUDHitZone(
+                center: layout.topLeftCenter,
+                size: layout.topButtonSize,
+                accessibilityLabel: "Back",
+                accessibilityIdentifier: "recordingHUD.backButton",
+                action: close
+            )
 
-            Image("chaotic_waveform")
-                .resizable()
-                .scaledToFit()
-                .frame(width: proxy.size.width * 1.52)
-                .scaleEffect(x: 1.03, y: waveformScaleY, anchor: .center)
-                .rotationEffect(.degrees(waveformRotation))
-                .offset(y: waveformOffsetY)
-                .animation(.spring(response: 0.1, dampingFraction: 0.3, blendDuration: 0), value: waveformScaleY)
-                .position(x: proxy.size.width * 0.5, y: proxy.size.height * 0.53)
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-    }
+            RecordingHUDHitZone(
+                center: layout.topRightCenter,
+                size: layout.topButtonSize,
+                accessibilityLabel: "More actions",
+                accessibilityIdentifier: "recordingHUD.moreButton",
+                action: moreFeedback
+            )
 
-    private var giantMicButton: some View {
-        Button(action: close) {
-            Image("brutal_mic_button")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 110, height: 110)
-                .matchedGeometryEffect(id: "micButton", in: namespace)
-                .scaleEffect(isAnimating ? 1.035 : 0.965)
-                .animation(.spring(response: 0.34, dampingFraction: 0.48, blendDuration: 0).repeatForever(autoreverses: true), value: isAnimating)
-                .contentShape(Circle())
+            RecordingHUDHitZone(
+                center: layout.micCenter,
+                size: layout.micHitSize,
+                accessibilityLabel: "Stop recording",
+                accessibilityIdentifier: "recordingHUD.stopButton",
+                action: close
+            )
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Stop recording")
-        .accessibilityIdentifier("recordingHUD.stopButton")
     }
 
     private func close() {
         #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
         #endif
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.68, blendDuration: 0)) {
+
+        withAnimation(.easeOut(duration: 0.18)) {
             isRecording = false
         }
     }
 
-    private func startAnimations() {
+    private func moreFeedback() {
+        #if canImport(UIKit)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        #endif
+    }
+
+    private func resetWaveform() {
         waveformScaleY = 1
-        waveformOffsetY = 0
-        waveformRotation = 0
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.58, blendDuration: 0)) {
-            isAnimating = true
+        waveformNudgeX = 0
+        meterIndex = 0
+    }
+}
+
+private struct RecordingHUDHitZone: View {
+    let center: CGPoint
+    let size: CGSize
+    let accessibilityLabel: String
+    let accessibilityIdentifier: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Color.clear
+                .frame(width: size.width, height: size.height)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(RecordingHUDTransparentButtonStyle())
+        .position(center)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(accessibilityIdentifier)
+    }
+}
+
+private struct RecordingHUDTransparentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(response: 0.18, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+
+private struct RecordingHUDFigmaLayout {
+    private static let canvasSize = CGSize(width: 786, height: 1418)
+    private static let waveformRect = CGRect(x: -13, y: 398, width: 815, height: 528)
+    private static let micRect = CGRect(x: 228, y: 932, width: 330, height: 330)
+    private static let leftButtonRect = CGRect(x: 22, y: 84, width: 98, height: 98)
+    private static let rightButtonRect = CGRect(x: 666, y: 84, width: 98, height: 98)
+
+    private let scaleX: CGFloat
+    private let scaleY: CGFloat
+    private let originY: CGFloat
+    let contentHeight: CGFloat
+
+    static func topOffset(for proxy: GeometryProxy) -> CGFloat {
+        proxy.safeAreaInsets.top > 55 ? 34 : 0
     }
 
-    private func stopAnimations() {
-        isAnimating = false
-        waveformScaleY = 1
-        waveformOffsetY = 0
-        waveformRotation = 0
+    init(proxy: GeometryProxy, topOffset: CGFloat) {
+        let viewSize = proxy.size
+        scaleX = viewSize.width / Self.canvasSize.width
+        contentHeight = max(1, viewSize.height - topOffset)
+        scaleY = contentHeight / Self.canvasSize.height
+        originY = topOffset
     }
 
-    private func topContentInset(for proxy: GeometryProxy) -> CGFloat {
-        max(70, proxy.safeAreaInsets.top + 24)
+    var waveformCenter: CGPoint {
+        center(of: Self.waveformRect)
+    }
+
+    var waveformSize: CGSize {
+        scaledSize(of: Self.waveformRect)
+    }
+
+    var micCenter: CGPoint {
+        center(of: Self.micRect)
+    }
+
+    var micHitSize: CGSize {
+        let size = scaledSize(of: Self.micRect)
+        return CGSize(width: max(size.width, 118), height: max(size.height, 118))
+    }
+
+    var topLeftCenter: CGPoint {
+        center(of: Self.leftButtonRect)
+    }
+
+    var topRightCenter: CGPoint {
+        center(of: Self.rightButtonRect)
+    }
+
+    var topButtonSize: CGSize {
+        let size = scaledSize(of: Self.leftButtonRect)
+        return CGSize(width: max(size.width, 54), height: max(size.height, 54))
+    }
+
+    private func center(of rect: CGRect) -> CGPoint {
+        CGPoint(
+            x: rect.midX * scaleX,
+            y: originY + rect.midY * scaleY
+        )
+    }
+
+    private func scaledSize(of rect: CGRect) -> CGSize {
+        CGSize(width: rect.width * scaleX, height: rect.height * scaleY)
     }
 }
 
@@ -153,7 +216,7 @@ struct RecordingHUDView: View {
         ZStack {
             DoodlePalette.paperBg
                 .ignoresSafeArea()
-                .messyScribbleBackground(color: DoodlePalette.bubblegumPink, opacity: 0.06)
+                .messyScribbleBackground(color: DoodlePalette.brutalPink, opacity: 0.06)
 
             VStack {
                 Spacer(minLength: 0)
@@ -166,38 +229,7 @@ struct RecordingHUDView: View {
                     .zIndex(10)
             }
         }
-    }
-}
-
-private struct RecordingHeroTitle: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: -8) {
-            Text("DUMPING")
-            Text("BRAIN...")
-        }
-        .font(.system(size: 56, weight: .black, design: .rounded))
-        .foregroundStyle(DoodlePalette.markerBlack)
-        .multilineTextAlignment(.leading)
-        .lineLimit(1)
-        .minimumScaleFactor(0.68)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityLabel("DUMPING BRAIN...")
-    }
-}
-
-private struct RecordingPaperTexture: View {
-    var body: some View {
-        Canvas { context, size in
-            for index in 0..<120 {
-                let progress = CGFloat(index)
-                let x = abs(sin(progress * 12.9898) * 43758.5453).truncatingRemainder(dividingBy: 1) * size.width
-                let y = abs(cos(progress * 78.233) * 12937.1371).truncatingRemainder(dividingBy: 1) * size.height
-                let radius = CGFloat(index % 3 + 1) * 0.6
-                let color = index % 4 == 0 ? DoodlePalette.bubblegumPink.opacity(0.18) : DoodlePalette.markerBlack.opacity(0.035)
-                context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: radius, height: radius)), with: .color(color))
-            }
-        }
-        .allowsHitTesting(false)
+        .statusBarHidden(isRecording)
     }
 }
 
@@ -209,9 +241,5 @@ private struct RecordingPaperTexture: View {
     @Previewable @State var isRecording = true
     @Previewable @Namespace var namespace
 
-    ZStack {
-        DoodlePalette.paperBg.ignoresSafeArea()
-        DoodleActionBar(isRecording: $isRecording, namespace: namespace)
-        ExpandedRecordingHUD(isRecording: $isRecording, namespace: namespace)
-    }
+    ExpandedRecordingHUD(isRecording: $isRecording, namespace: namespace)
 }

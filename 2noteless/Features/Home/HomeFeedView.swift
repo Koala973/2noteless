@@ -40,6 +40,7 @@ struct HomeFeedView: View {
                     .zIndex(10)
             }
         }
+        .statusBarHidden(isRecording)
     }
 }
 
